@@ -1,0 +1,45 @@
+name: Migration Safety
+
+on:
+  pull_request:
+    paths:
+      - "db/migrations/**"
+      - "tools/migration_safety_scan.py"
+  push:
+    branches:
+      - main
+
+jobs:
+  scan-migrations:
+    runs-on: ubuntu-latest
+    steps:
+      - name: Checkout
+        uses: actions/checkout@v4
+
+      - name: Set up Python
+        uses: actions/setup-python@v5
+        with:
+          python-version: "3.11"
+
+      - name: Run migration safety scan
+        run: |
+          python3 tools/migration_safety_scan.py db/migrations --evidence-file artifacts/migration-safety-evidence.json
+
+      - name: Upload migration safety evidence
+        if: always()
+        uses: actions/upload-artifact@v4
+        with:
+          name: migration-safety-evidence
+          path: artifacts/migration-safety-evidence.json
+
+      - name: Send Evidence to ZeroUI Bot
+        if: always()
+        run: |
+          if [ -f artifacts/migration-safety-evidence.json ]; then
+            curl -X POST "${{ secrets.ZEROUI_WEBHOOK_URL }}" \
+              -H "Content-Type: application/json" \
+              -H "Authorization: Bearer ${{ secrets.ZEROUI_TOKEN }}" \
+              -d @artifacts/migration-safety-evidence.json
+          else
+            echo "No evidence file generated to send."
+          fi
