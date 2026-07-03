@@ -1,4 +1,4 @@
-﻿name: ZeroUI ER-007 Migration Safety Gate
+name: ZeroUI ER-007 Migration Safety Gate
 
 on: [push, pull_request]
 
@@ -14,7 +14,9 @@ jobs:
           echo "Scanning .sql files for unsafe operations..."
           
           # Find all SQL files containing DROP TABLE
-          BAD_FILES=$(grep -rlwi "DROP TABLE" --include="*.sql" . || true)
+          BAD_FILES=$(grep -rli "DROP TABLE" --include="*.sql" . || true)
+          
+          echo "Found these files containing DROP TABLE: $BAD_FILES"
           
           if [ -n "$BAD_FILES" ]; then
             for file in $BAD_FILES; do
