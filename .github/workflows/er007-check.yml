@@ -1,0 +1,29 @@
+﻿name: ZeroUI ER-007 Migration Safety Gate
+
+on: [push, pull_request]
+
+jobs:
+  check-sql-migrations:
+    runs-on: ubuntu-latest
+    steps:
+      - name: Checkout Code
+        uses: actions/checkout@v4
+        
+      - name: Scan for Unsafe DROP TABLE (ER-007)
+        run: |
+          echo "Scanning .sql files for unsafe operations..."
+          
+          # Find all SQL files containing DROP TABLE
+          BAD_FILES=$(grep -rlwi "DROP TABLE" --include="*.sql" . || true)
+          
+          if [ -n "$BAD_FILES" ]; then
+            for file in $BAD_FILES; do
+              # Check if the required parallel change plan header exists
+              if ! grep -qi "fm1.parallel_change_plan: present" "$file"; then
+                echo "❌ ER-007 BLOCK: Found unsafe DROP TABLE in $file without expand->migrate->contract plan."
+                exit 1
+              fi
+            done
+          fi
+          
+          echo "✅ All migrations passed ER-007 safety checks."
